@@ -1,0 +1,566 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FNOL Chatbot Prototype</title>
+  <style>
+    :root{
+      --brand:#2563eb; /* blue-600 */
+      --brand-600:#2563eb;
+      --brand-700:#1d4ed8;
+      --bg:#0b1020; /* deep */
+      --panel:#0f172a; /* slate-900 */
+      --text:#e5e7eb; /* gray-200 */
+      --muted:#94a3b8; /* slate-400 */
+      --bot:#111827; /* gray-900 */
+      --user:#1f2937; /* gray-800 */
+      --accent:#10b981; /* emerald */
+      --warn:#f59e0b; /* amber */
+      --error:#ef4444; /* red */
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans,
+      Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1000px 600px at 20% -10%, rgba(37,99,235,.15), transparent 60%),
+                  radial-gradient(800px 400px at 120% 20%, rgba(16,185,129,.10), transparent 70%),
+                  var(--bg);
+      color:var(--text);
+      min-height:100vh;
+      display:flex; align-items:center; justify-content:center; padding:24px;
+    }
+    .app{
+      width:min(100%, 1100px); height:min(92vh, 900px);
+      background: linear-gradient(180deg, rgba(15,23,42,.9), rgba(15,23,42,.98));
+      border:1px solid rgba(255,255,255,.06); border-radius:16px; box-shadow: 0 20px 60px rgba(0,0,0,.5);
+      display:grid; grid-template-columns: 320px 1fr; overflow:hidden;
+    }
+    .sidebar{
+      background: linear-gradient(180deg, rgba(17,24,39,.9), rgba(17,24,39,.98));
+      border-right:1px solid rgba(255,255,255,.06); padding:20px; display:flex; flex-direction:column; gap:16px;
+    }
+    .brand{display:flex; align-items:center; gap:12px}
+    .brand .logo{width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg, var(--brand-700), var(--brand)); display:flex; align-items:center; justify-content:center; font-weight:800}
+    .brand h1{font-size:16px; margin:0}
+    .brand .sub{font-size:12px; color:var(--muted)}
+    .card{background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:12px; padding:12px}
+    .card h3{margin:0 0 8px 0; font-size:13px; color:#cbd5e1; letter-spacing:.2px}
+    .card p, .card li{font-size:12px; color:var(--muted); line-height:1.4}
+    .btn{background:var(--brand); color:white; border:none; border-radius:10px; padding:10px 12px; cursor:pointer; font-weight:600}
+    .btn.secondary{background:transparent; border:1px solid rgba(255,255,255,.12); color:#e2e8f0}
+    .btn.icon{display:inline-flex; align-items:center; gap:8px}
+    .btn.small{padding:6px 10px; border-radius:8px; font-size:12px}
+
+    .main{display:flex; flex-direction:column; height:100%}
+    .header{display:flex; align-items:center; justify-content:space-between; padding:16px 18px; border-bottom:1px solid rgba(255,255,255,.06)}
+    .header .title{display:flex; align-items:center; gap:12px}
+    .header .status{font-size:12px; color:var(--muted)}
+    .progress{height:6px; background:rgba(255,255,255,.06); border-radius:999px; overflow:hidden; margin:0 18px}
+    .progress > div{height:100%; width:0; background:linear-gradient(90deg, var(--brand), #38bdf8); transition:width .3s ease}
+
+    .chat{flex:1; overflow:auto; padding:18px; display:flex; flex-direction:column; gap:12px}
+    .msg{display:flex; gap:12px; align-items:flex-start}
+    .msg .bubble{max-width:70%; padding:12px 14px; border-radius:14px; font-size:14px; line-height:1.35}
+    .msg.bot .bubble{background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.06)}
+    .msg.user{justify-content:flex-end}
+    .msg.user .bubble{background:linear-gradient(135deg, var(--brand-700), var(--brand)); color:#fff}
+    .avatar{width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,.08); display:flex; align-items:center; justify-content:center; font-weight:800}
+
+    .quick{display:flex; flex-wrap:wrap; gap:8px; margin-left:44px}
+    .chip{background:rgba(37,99,235,.1); color:#cfe0ff; border:1px solid rgba(37,99,235,.3); padding:8px 10px; font-size:12px; border-radius:999px; cursor:pointer}
+
+    .inputbar{display:flex; gap:10px; padding:14px 16px; border-top:1px solid rgba(255,255,255,.06); background:rgba(15,23,42,.8)}
+    .inputbar input[type="text"], .inputbar input[type="datetime-local"], .inputbar input[type="date"], .inputbar input[type="email"], .inputbar input[type="tel"], .inputbar input[type="time"]{
+      flex:1; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); color:#e5e7eb; border-radius:10px; padding:10px 12px; outline:none
+    }
+    .hint{font-size:12px; color:var(--muted); margin-top:6px}
+
+    .summary{background:rgba(16,185,129,.08); border:1px dashed rgba(16,185,129,.5); padding:12px; border-radius:10px}
+    .row{display:grid; grid-template-columns: 1fr 1fr; gap:10px}
+    .row .field{background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:8px; padding:10px}
+    .field .label{font-size:12px; color:#9ca3af}
+    .field .value{font-size:14px}
+
+    .footer-note{font-size:11px; color:#9ca3af; margin-top:8px}
+
+    @media (max-width: 900px){
+      .app{grid-template-columns:1fr}
+      .sidebar{display:none}
+      .msg .bubble{max-width:85%}
+    }
+  </style>
+</head>
+<body>
+  <div class="app" role="application" aria-label="FNOL Chatbot Prototype">
+    <aside class="sidebar" aria-label="Sidebar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">AI</div>
+        <div>
+          <h1 id="brand-title">Acme Insurance</h1>
+          <div class="sub">FNOL Chatbot Prototype</div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>What this is</h3>
+        <p>This is an interactive, front-end prototype for a First Notice of Loss (FNOL) chatbot. It collects claim details in a conversational flow and generates a structured JSON payload you can send to back-end systems.</p>
+      </div>
+      <div class="card">
+        <h3>Features</h3>
+        <ul>
+          <li>Guided, chat-style FNOL intake</li>
+          <li>Auto vs Property branching</li>
+          <li>Validation for dates, email, phone</li>
+          <li>Attach photos (local demo only)</li>
+          <li>Download claim JSON & transcript</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Developer hooks</h3>
+        <p>Check the <code>CONFIG</code> and <code>submitClaim()</code> function in the script to integrate with APIs (e.g., policy, claims core).</p>
+        <button class="btn small secondary" id="btn-export-transcript">Export transcript</button>
+      </div>
+      <div class="card">
+        <h3>Legal</h3>
+        <p>This demo stores data in browser memory only. Do not enter real Personally Identifiable Information.</p>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="header">
+        <div class="title">
+          <div class="avatar" aria-hidden="true">🤖</div>
+          <div>
+            <div style="font-weight:700">FNOL Assistant</div>
+            <div class="status" id="status">Ready</div>
+          </div>
+        </div>
+        <div class="title">
+          <button class="btn small secondary" id="btn-restart">Restart</button>
+          <button class="btn small" id="btn-skip-to-summary">Skip to Summary</button>
+        </div>
+      </div>
+      <div class="progress" aria-label="Progress"><div id="progressbar"></div></div>
+      <div class="chat" id="chat" aria-live="polite" aria-atomic="false"></div>
+      <div class="inputbar">
+        <input id="textInput" type="text" placeholder="Type your response and press Enter…" autocomplete="off" aria-label="Your message" />
+        <button class="btn icon" id="sendBtn" aria-label="Send">Send ➤</button>
+      </div>
+    </main>
+  </div>
+
+  <input type="file" id="photoInput" accept="image/*" multiple style="display:none" />
+
+  <script>
+    // ===== CONFIG =====
+    const CONFIG = {
+      brandName: 'Acme Insurance',
+      slaHours: 24,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      productLines: ['Auto', 'Property'],
+      demo: true,
+      // Stub endpoints
+      endpoints: {
+        policyLookup: null, // e.g., '/api/policy/{policyNumber}'
+        submitFNOL: null    // e.g., '/api/claims/fnol'
+      }
+    };
+
+    // ===== STATE =====
+    const state = {
+      currentStep: 0,
+      transcript: [],
+      quickRepliesActive: false,
+      data: {
+        channel: 'web-prototype',
+        brand: CONFIG.brandName,
+        createdAt: new Date().toISOString(),
+        timezone: CONFIG.timezone,
+        lossType: null,
+        policyNumber: null,
+        claimant: { name: null, email: null, phone: null },
+        incident: {
+          date: null, time: null, location: null, description: null,
+          policeReport: { filed: null, reportNumber: null },
+        },
+        auto: {
+          vehicle: { make: null, model: null, year: null, vin: null, plate: null },
+          drivable: null, injuries: null, towNeeded: null, otherParty: { present: null, details: null }
+        },
+        property: {
+          propertyType: null, cause: null, severity: null,
+          mitigation: null, utilitiesOff: null
+        },
+        attachments: [], // { name, type, size }
+        consent: { privacy: false, contactOk: true },
+      },
+      steps: []
+    };
+
+    // ===== UI HELPERS =====
+    const chat = document.getElementById('chat');
+    const textInput = document.getElementById('textInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const progressbar = document.getElementById('progressbar');
+    const photoInput = document.getElementById('photoInput');
+
+    function addMsg(who, html){
+      const wrap = document.createElement('div');
+      wrap.className = `msg ${who}`;
+      const avatar = document.createElement('div');
+      avatar.className = 'avatar';
+      avatar.textContent = who === 'bot' ? '🤖' : '🧑';
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.innerHTML = html;
+      if(who === 'user') wrap.appendChild(bubble), wrap.appendChild(avatar);
+      else wrap.appendChild(avatar), wrap.appendChild(bubble);
+      chat.appendChild(wrap);
+      state.transcript.push({ who, text: bubble.textContent, ts: new Date().toISOString() });
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function addQuickReplies(options){
+      const row = document.createElement('div');
+      row.className = 'quick';
+      options.forEach(opt => {
+        const b = document.createElement('button');
+        b.className = 'chip';
+        b.textContent = opt.label;
+        b.onclick = () => {
+          if(state.quickRepliesActive){ consumeUser(opt.value ?? opt.label); }
+        };
+        row.appendChild(b);
+      });
+      chat.appendChild(row);
+      chat.scrollTop = chat.scrollHeight;
+      state.quickRepliesActive = true;
+    }
+
+    function clearQuickReplies(){
+      const rows = chat.querySelectorAll('.quick');
+      rows.forEach(r => r.remove());
+      state.quickRepliesActive = false;
+    }
+
+    function setProgress(pct){ progressbar.style.width = `${pct}%`; }
+
+    function consumeUser(text){
+      clearQuickReplies();
+      addMsg('user', escapeHtml(text));
+      routeInput(text);
+    }
+
+    function escapeHtml(str){
+      return String(str).replace(/[&<>"]+/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]));
+    }
+
+    function validateEmail(v){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+    function validatePhone(v){ return /^[0-9+()\-\s]{7,}$/.test(v); }
+
+    function toSummaryHTML(){
+      const d = state.data;
+      function field(label, val){ return `<div class=\"field\"><div class=\"label\">${label}</div><div class=\"value\">${escapeHtml(val ?? '—')}</div></div>`; }
+      return `
+        <div class="summary">
+          <div class="row">
+            ${field('Loss Type', d.lossType)}
+            ${field('Policy #', d.policyNumber)}
+            ${field('Claimant Name', d.claimant.name)}
+            ${field('Email', d.claimant.email)}
+            ${field('Phone', d.claimant.phone)}
+            ${field('Incident Date', d.incident.date)}
+            ${field('Incident Time', d.incident.time || '—')}
+            ${field('Location', d.incident.location)}
+            ${field('Police Report Filed', d.incident.policeReport.filed)}
+            ${field('Report #', d.incident.policeReport.reportNumber || '—')}
+          </div>
+          ${d.lossType === 'Auto' ? `
+          <h4>Auto</h4>
+          <div class="row">
+            ${field('Vehicle Make', d.auto.vehicle.make)}
+            ${field('Vehicle Model', d.auto.vehicle.model)}
+            ${field('Year', d.auto.vehicle.year)}
+            ${field('VIN', d.auto.vehicle.vin || '—')}
+            ${field('Plate', d.auto.vehicle.plate || '—')}
+            ${field('Drivable', d.auto.drivable)}
+            ${field('Injuries', d.auto.injuries)}
+            ${field('Tow Needed', d.auto.towNeeded)}
+          </div>` : ''}
+          ${d.lossType === 'Property' ? `
+          <h4>Property</h4>
+          <div class="row">
+            ${field('Property Type', d.property.propertyType)}
+            ${field('Cause', d.property.cause)}
+            ${field('Severity', d.property.severity)}
+            ${field('Mitigation', d.property.mitigation)}
+            ${field('Utilities Off', d.property.utilitiesOff)}
+          </div>` : ''}
+          <div class="row">
+            ${field('Description', d.incident.description)}
+            ${field('Attachments', d.attachments.map(a=>a.name).join(', ') || '—')}
+          </div>
+        </div>
+        <div class="hint">If something looks off, type <b>edit</b> and the field name (e.g., <code>edit phone 555-123-4567</code>) or hit <b>Restart</b>.</div>
+      `;
+    }
+
+    function download(filename, content, type = 'application/json'){
+      const blob = new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename; a.click();
+      setTimeout(()=>URL.revokeObjectURL(url), 1000);
+    }
+
+    function jsonPretty(obj){ return JSON.stringify(obj, null, 2); }
+
+    // ===== STEPS =====
+    function buildSteps(){
+      const s = [];
+      s.push({ id:'welcome', say: () => {
+        addMsg('bot', `Hi! I can file your First Notice of Loss. Typical completion time is <b>${CONFIG.slaHours} hours</b>.\n\nTo begin, what type of loss is this?`);
+        addQuickReplies(CONFIG.productLines.map(x=>({label:x})));
+      }, onInput: v => {
+        const val = (v||'').trim().toLowerCase();
+        if(['auto','car','vehicle'].includes(val)) state.data.lossType = 'Auto';
+        else if(['property','home','house','building'].includes(val)) state.data.lossType = 'Property';
+        else return retry('Please choose <b>Auto</b> or <b>Property</b>.');
+        next();
+      }});
+
+      s.push({ id:'policy', say: () => {
+        addMsg('bot', 'Do you have the policy number?');
+        addQuickReplies([{label:'Yes'},{label:"No"}]);
+      }, onInput: v => {
+        const val = v.trim().toLowerCase();
+        if(val === 'yes'){ addMsg('bot', 'Please enter the policy number.'); state._awaitingPolicy = true; }
+        else if(val === 'no'){ state.data.policyNumber = 'Unknown'; next(); }
+        else if(state._awaitingPolicy){ state.data.policyNumber = v.trim(); state._awaitingPolicy=false; next(); }
+        else return retry('Please reply <b>Yes</b> or <b>No</b>, or type the policy number.');
+      }});
+
+      s.push({ id:'claimantName', say: () => addMsg('bot', 'Your full name?'), onInput: v => { if(v.trim().length<3) return retry('Please enter your full name.'); state.data.claimant.name = v.trim(); next(); }});
+      s.push({ id:'email', say: () => addMsg('bot', 'Best email for updates?'), onInput: v => { if(!validateEmail(v.trim())) return retry('Please enter a valid email (e.g., name@example.com).'); state.data.claimant.email = v.trim(); next(); }});
+      s.push({ id:'phone', say: () => addMsg('bot', 'Phone number?'), onInput: v => { if(!validatePhone(v.trim())) return retry('Please enter a valid phone number.'); state.data.claimant.phone = v.trim(); next(); }});
+
+      s.push({ id:'date', say: () => addMsg('bot', 'Incident date? (YYYY-MM-DD)'), onInput: v => {
+        const d = v.trim();
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(d)) return retry('Format should be YYYY-MM-DD.');
+        const dt = new Date(d);
+        const today = new Date(); today.setHours(0,0,0,0);
+        if(dt > today) return retry('Date cannot be in the future.');
+        state.data.incident.date = d; next();
+      }});
+
+      s.push({ id:'time', say: () => addMsg('bot', 'Incident time? (HH:MM, 24h). Type <b>skip</b> to skip.'), onInput: v => {
+        const t = v.trim().toLowerCase();
+        if(t==='skip'){ state.data.incident.time = null; return next(); }
+        if(!/^([01]?\d|2[0-3]):[0-5]\d$/.test(t)) return retry('Time should be HH:MM in 24-hour format, or type <b>skip</b>.');
+        state.data.incident.time = t; next();
+      }});
+
+      s.push({ id:'location', say: () => addMsg('bot', 'Where did it happen? (City/Address)'), onInput: v => { if(v.trim().length<3) return retry('Please enter a brief location.'); state.data.incident.location=v.trim(); next(); }});
+      s.push({ id:'desc', say: () => addMsg('bot', 'Briefly describe what happened.'), onInput: v => { if(v.trim().length<10) return retry('A bit more detail helps (10+ characters).'); state.data.incident.description=v.trim(); next(); }});
+      s.push({ id:'police', say: () => { addMsg('bot', 'Was a police report filed?'); addQuickReplies([{label:'Yes'},{label:'No'}]); }, onInput: v => { const t=v.trim().toLowerCase(); if(['yes','y'].includes(t)){ state.data.incident.policeReport.filed='Yes'; addMsg('bot','Report number (or type skip)'); state._awaitRep=true;} else if(['no','n'].includes(t)){ state.data.incident.policeReport.filed='No'; next(); } else if(state._awaitRep){ if(t==='skip'){ state.data.incident.policeReport.reportNumber=null; state._awaitRep=false; next(); } else { state.data.incident.policeReport.reportNumber=v.trim(); state._awaitRep=false; next(); } } else return retry('Please choose Yes or No.'); }});
+
+      // Branch: AUTO
+      s.push({ id:'auto-vehicle', when: () => state.data.lossType==='Auto', say: () => {
+        addMsg('bot','Let\'s capture vehicle details. What\'s the make?');
+        state._autoStage='make';
+      }, onInput: v => {
+        const st = state._autoStage;
+        if(st==='make'){ state.data.auto.vehicle.make = v.trim(); state._autoStage='model'; return addMsg('bot','Model?'); }
+        if(st==='model'){ state.data.auto.vehicle.model = v.trim(); state._autoStage='year'; return addMsg('bot','Year (e.g., 2020)?'); }
+        if(st==='year'){ const y = parseInt(v.trim(),10); const now=new Date().getFullYear(); if(!y||y<1980||y>now+1) return retry(`Year should be between 1980 and ${now+1}.`); state.data.auto.vehicle.year = y; state._autoStage='vin'; return addMsg('bot','VIN (or type skip)'); }
+        if(st==='vin'){ if(v.trim().toLowerCase()!=='skip') state.data.auto.vehicle.vin = v.trim(); state._autoStage='plate'; return addMsg('bot','Plate (or type skip)'); }
+        if(st==='plate'){ if(v.trim().toLowerCase()!=='skip') state.data.auto.vehicle.plate = v.trim(); state._autoStage=null; next(); }
+      }});
+
+      s.push({ id:'auto-drivable', when: () => state.data.lossType==='Auto', say: () => { addMsg('bot','Is the vehicle drivable?'); addQuickReplies([{label:'Yes'},{label:'No'}]); }, onInput: v => { const t=v.trim().toLowerCase(); if(['yes','y'].includes(t)){ state.data.auto.drivable='Yes'; next(); } else if(['no','n'].includes(t)){ state.data.auto.drivable='No'; next(); } else return retry('Please choose Yes or No.'); }});
+      s.push({ id:'auto-injuries', when: () => state.data.lossType==='Auto', say: () => { addMsg('bot','Any injuries?'); addQuickReplies([{label:'Yes'},{label:'No'}]); }, onInput: v => { const t=v.trim().toLowerCase(); if(['yes','y'].includes(t)){ state.data.auto.injuries='Yes'; next(); } else if(['no','n'].includes(t)){ state.data.auto.injuries='No'; next(); } else return retry('Please choose Yes or No.'); }});
+      s.push({ id:'auto-tow', when: () => state.data.lossType==='Auto', say: () => { addMsg('bot','Do you need a tow right now?'); addQuickReplies([{label:'Yes'},{label:'No'}]); }, onInput: v => { const t=v.trim().toLowerCase(); if(['yes','y'].includes(t)){ state.data.auto.towNeeded='Yes'; addMsg('bot','We can arrange towing after submission.'); next(); } else if(['no','n'].includes(t)){ state.data.auto.towNeeded='No'; next(); } else return retry('Please choose Yes or No.'); }});
+
+      // Branch: PROPERTY
+      s.push({ id:'prop-type', when: () => state.data.lossType==='Property', say: () => { addMsg('bot','What type of property?'); addQuickReplies([{label:'Home'},{label:'Commercial'},{label:'Condo/Apartment'}]); }, onInput: v => { const t=v.trim().toLowerCase(); if(['home','house'].includes(t)) state.data.property.propertyType='Home'; else if(['commercial','business'].includes(t)) state.data.property.propertyType='Commercial'; else if(['condo','apartment','flat'].includes(t)) state.data.property.propertyType='Condo/Apartment'; else return retry('Please choose one of the options.'); next(); }});
+      s.push({ id:'prop-cause', when: () => state.data.lossType==='Property', say: () => { addMsg('bot','What was the primary cause?'); addQuickReplies([{label:'Water leak'},{label:'Fire'},{label:'Theft/Vandalism'},{label:'Weather'},{label:'Other'}]); }, onInput: v => { const t=v.trim().toLowerCase(); const map={'water leak':'Water leak','fire':'Fire','theft':'Theft/Vandalism','theft/vandalism':'Theft/Vandalism','weather':'Weather','other':'Other'}; if(map[t]) state.data.property.cause=map[t]; else return retry('Please pick one: Water leak, Fire, Theft/Vandalism, Weather, Other.'); next(); }});
+      s.push({ id:'prop-severity', when: () => state.data.lossType==='Property', say: () => { addMsg('bot','How severe is the damage?'); addQuickReplies([{label:'Minor'},{label:'Moderate'},{label:'Severe'}]); }, onInput: v => { const t=v.trim().toLowerCase(); const map={'minor':'Minor','moderate':'Moderate','severe':'Severe'}; if(map[t]) state.data.property.severity=map[t]; else return retry('Please choose Minor, Moderate, or Severe.'); next(); }});
+      s.push({ id:'prop-mitigation', when: () => state.data.lossType==='Property', say: () => { addMsg('bot','Any mitigation taken (e.g., shut off water)? Type <b>skip</b> if none.'); }, onInput: v => { const t=v.trim(); if(t.toLowerCase()==='skip') state.data.property.mitigation=null; else state.data.property.mitigation=t; next(); }});
+      s.push({ id:'prop-utilities', when: () => state.data.lossType==='Property', say: () => { addMsg('bot','Are utilities (water/electric/gas) turned off?'); addQuickReplies([{label:'Yes'},{label:'No'},{label:'Not applicable'}]); }, onInput: v => { const t=v.trim().toLowerCase(); if(['yes','y'].includes(t)) state.data.property.utilitiesOff='Yes'; else if(['no','n'].includes(t)) state.data.property.utilitiesOff='No'; else if(['not applicable','n/a','na'].includes(t)) state.data.property.utilitiesOff='N/A'; else return retry('Please choose Yes, No, or Not applicable.'); next(); }});
+
+      // Attachments
+      s.push({ id:'attachments', say: () => {
+        addMsg('bot','Would you like to add photos now? (optional)');
+        addQuickReplies([{label:'Upload photos'},{label:'Skip'}]);
+      }, onInput: v => {
+        const t=v.trim().toLowerCase();
+        if(t==='upload photos'){ photoInput.click(); } else if(t==='skip'){ next(); } else return retry('Please choose Upload photos or Skip.');
+      }});
+
+      // Consent
+      s.push({ id:'consent', say: () => {
+        addMsg('bot', 'Please confirm the privacy notice: you consent to share this information for claim processing and to be contacted about your claim. Do you agree?');
+        addQuickReplies([{label:'I agree'},{label:'I do not agree'}]);
+      }, onInput: v => {
+        const t=v.trim().toLowerCase();
+        if(t==='i agree' || t==='agree' || t==='yes'){ state.data.consent.privacy = true; next(); }
+        else if(t==='i do not agree' || t==='no'){ state.data.consent.privacy = false; addMsg('bot', 'We cannot proceed without consent. You may contact support by phone.'); setProgress(100); end(); }
+        else return retry('Please choose one of the options.');
+      }});
+
+      // Summary & submit
+      s.push({ id:'summary', say: () => {
+        addMsg('bot', 'Here is a quick summary of your First Notice of Loss:');
+        addMsg('bot', toSummaryHTML());
+        addMsg('bot', 'Would you like to submit this now?');
+        addQuickReplies([{label:'Submit'},{label:'Edit'},{label:'Restart'}]);
+      }, onInput: v => {
+        const t=v.trim().toLowerCase();
+        if(t==='submit') submitClaim();
+        else if(t==='edit'){ addMsg('bot','Type <code>edit field newValue</code>, for example: <code>edit phone 555-123-4567</code>. When done, type <b>summary</b>.'); }
+        else if(t==='restart'){ restart(); }
+        else if(t.startsWith('edit ')){ const ok = applyInlineEdit(t.substring(5)); if(!ok) addMsg('bot','Could not parse that edit. Try: <code>edit email name@example.com</code>'); }
+        else if(t==='summary'){ addMsg('bot', toSummaryHTML()); addQuickReplies([{label:'Submit'},{label:'Restart'}]); }
+        else return retry('Please choose Submit, Edit, or Restart.');
+      }});
+
+      state.steps = s;
+    }
+
+    function applyInlineEdit(str){
+      const [field, ...rest] = str.split(/\s+/);
+      const val = rest.join(' ').trim();
+      switch((field||'').toLowerCase()){
+        case 'name': state.data.claimant.name = val; return true;
+        case 'email': if(!validateEmail(val)) return false; state.data.claimant.email = val; return true;
+        case 'phone': if(!validatePhone(val)) return false; state.data.claimant.phone = val; return true;
+        case 'policy': state.data.policyNumber = val; return true;
+        case 'date': if(!/^\d{4}-\d{2}-\d{2}$/.test(val)) return false; state.data.incident.date = val; return true;
+        case 'time': if(!/^([01]?\d|2[0-3]):[0-5]\d$/.test(val)) return false; state.data.incident.time = val; return true;
+        case 'location': state.data.incident.location = val; return true;
+        case 'description': case 'desc': state.data.incident.description = val; return true;
+        default: return false;
+      }
+    }
+
+    function retry(msg){ addMsg('bot', msg); }
+
+    function next(){
+      // find next applicable step index
+      const total = state.steps.length;
+      let i = state.currentStep + 1;
+      while(i < total && state.steps[i].when && !state.steps[i].when()) i++;
+      state.currentStep = Math.min(i, total-1);
+      setProgress(Math.round((state.currentStep/(total-1))*100));
+      state.steps[state.currentStep].say();
+    }
+
+    function routeInput(input){
+      // Special commands
+      const lc = input.trim().toLowerCase();
+      if(lc==='restart') return restart();
+      if(lc==='help') return addMsg('bot', 'Commands: restart, help, summary, edit <field> <value>');
+      if(lc==='summary'){ addMsg('bot', toSummaryHTML()); return; }
+
+      const step = state.steps[state.currentStep];
+      if(!step){ return; }
+      step.onInput && step.onInput(input);
+    }
+
+    function end(){
+      addMsg('bot','Thanks for using the FNOL assistant.');
+      textInput.disabled = true; sendBtn.disabled = true;
+    }
+
+    async function submitClaim(){
+      // Minimal required fields check
+      const d = state.data;
+      const missing = [];
+      if(!d.lossType) missing.push('lossType');
+      if(!d.claimant.name) missing.push('name');
+      if(!d.claimant.email) missing.push('email');
+      if(!d.claimant.phone) missing.push('phone');
+      if(!d.incident.date) missing.push('incident.date');
+      if(!d.incident.location) missing.push('incident.location');
+      if(!d.incident.description) missing.push('incident.description');
+      if(!d.consent.privacy) missing.push('consent');
+      if(missing.length){ addMsg('bot', `Missing required fields: ${missing.join(', ')}`); return; }
+
+      // Simulate API call
+      addMsg('bot','Submitting claim…');
+      document.getElementById('status').textContent = 'Submitting…';
+      await new Promise(r=>setTimeout(r, 900));
+
+      const claimRef = 'CLM-' + Math.random().toString(36).slice(2,8).toUpperCase();
+      d.reference = claimRef;
+      d.submittedAt = new Date().toISOString();
+
+      addMsg('bot', `✅ Submitted! Your temporary reference is <b>${claimRef}</b>. We\'ll contact you within ${CONFIG.slaHours} hours.`);
+      addMsg('bot', 'You can download your FNOL JSON payload below.');
+      const pretty = jsonPretty(d);
+      const pre = document.createElement('pre'); pre.textContent = pretty; pre.style.maxHeight = '220px'; pre.style.overflow = 'auto'; pre.style.background = 'rgba(255,255,255,.04)'; pre.style.padding='12px'; pre.style.borderRadius='10px';
+      const wrap = document.createElement('div'); wrap.className='msg bot';
+      const avatar = document.createElement('div'); avatar.className='avatar'; avatar.textContent='🤖';
+      const bubble = document.createElement('div'); bubble.className='bubble';
+      const dl = document.createElement('button'); dl.className='btn small'; dl.textContent='Download JSON'; dl.onclick = () => download(`fnol-${claimRef}.json`, pretty);
+      bubble.appendChild(pre); bubble.appendChild(dl);
+      wrap.appendChild(avatar); wrap.appendChild(bubble); chat.appendChild(wrap); chat.scrollTop = chat.scrollHeight;
+
+      document.getElementById('status').textContent = 'Submitted';
+      setProgress(100);
+    }
+
+    function restart(){
+      chat.innerHTML='';
+      textInput.disabled=false; sendBtn.disabled=false; textInput.value='';
+      state.currentStep=0; state.transcript=[]; state.quickRepliesActive=false;
+      state.data = {
+        channel: 'web-prototype', brand: CONFIG.brandName, createdAt: new Date().toISOString(), timezone: CONFIG.timezone,
+        lossType:null, policyNumber:null,
+        claimant:{name:null,email:null,phone:null},
+        incident:{date:null,time:null,location:null,description:null, policeReport:{filed:null, reportNumber:null}},
+        auto:{vehicle:{make:null,model:null,year:null,vin:null,plate:null}, drivable:null, injuries:null, towNeeded:null, otherParty:{present:null, details:null}},
+        property:{propertyType:null, cause:null, severity:null, mitigation:null, utilitiesOff:null},
+        attachments:[], consent:{privacy:false, contactOk:true}
+      };
+      document.getElementById('status').textContent = 'Ready';
+      setProgress(0);
+      state.steps[state.currentStep].say();
+    }
+
+    // Photo handling
+    photoInput.addEventListener('change', (e)=>{
+      const files = Array.from(e.target.files || []);
+      if(!files.length) return;
+      const accepted = files.slice(0, 10);
+      accepted.forEach(f => state.data.attachments.push({ name:f.name, type:f.type, size:f.size }));
+      addMsg('user', `${accepted.length} photo(s) selected`);
+      addMsg('bot', `${accepted.length} photo(s) attached. You can add more later if needed.`);
+      next();
+    });
+
+    // Transcript export
+    document.getElementById('btn-export-transcript').addEventListener('click', ()=>{
+      download(`fnol-transcript-${Date.now()}.json`, jsonPretty({ transcript: state.transcript, data: state.data }));
+    });
+
+    document.getElementById('btn-restart').addEventListener('click', restart);
+    document.getElementById('btn-skip-to-summary').addEventListener('click', ()=>{
+      state.currentStep = state.steps.findIndex(x=>x.id==='summary');
+      setProgress(90);
+      state.steps[state.currentStep].say();
+    });
+
+    // Input handling
+    sendBtn.addEventListener('click', ()=>{
+      const val = textInput.value; if(!val) return; textInput.value=''; consumeUser(val);
+    });
+    textInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); sendBtn.click(); }});
+
+    // Init
+    buildSteps();
+    state.steps[0].say();
+  </script>
+</body>
+</html>
